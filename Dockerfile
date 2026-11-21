@@ -21,6 +21,11 @@ RUN --mount=type=secret,id=MLFLOW_TRACKING_USERNAME \
     --mount=type=secret,id=MLFLOW_TRACKING_PASSWORD \
     MLFLOW_ALLOW_MODEL_CODE_EXECUTION=true python - <<'PY'
 
+
+RUN --mount=type=secret,id=MLFLOW_TRACKING_USERNAME \
+    --mount=type=secret,id=MLFLOW_TRACKING_PASSWORD \
+    python - <<'PY'
+
 import os
 import mlflow
 import mlflow.sklearn
@@ -42,7 +47,7 @@ client = MlflowClient()
 
 experiment_name = os.environ["MLFLOW_EXPERIMENT_NAME"]
 run_name = os.environ["MLFLOW_RUN_NAME"]
-artifact_path = os.environ["MLFLOW_ARTIFACT_PATH"]
+model_name = os.environ["MLFLOW_ARTIFACT_PATH"]
 
 # Find experiment
 experiment = client.get_experiment_by_name(experiment_name)
@@ -68,8 +73,30 @@ run = runs[0]
 
 print(f"Selected run: {run.info.run_id}")
 
-# Load model from DagsHub
-model_uri = f"runs:/{run.info.run_id}/{artifact_path}"
+# Find Logged Model associated with this run
+logged_models = mlflow.search_logged_models(
+    experiment_ids=[experiment.experiment_id],
+    filter_string=f"source_run_id = '{run.info.run_id}'",
+    output_format="list"
+)
+
+matching_models = [
+    model for model in logged_models
+    if model.name == model_name and model.status == "READY"
+]
+
+if not matching_models:
+    raise RuntimeError(
+        f"No ready model named '{model_name}' found "
+        f"for run {run.info.run_id}"
+    )
+
+logged_model = matching_models[0]
+
+print(f"Selected model ID: {logged_model.model_id}")
+
+# Download model from DagsHub
+model_uri = f"models:/{logged_model.model_id}"
 model = mlflow.sklearn.load_model(model_uri)
 
 # Save local copy
