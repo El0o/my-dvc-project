@@ -1,0 +1,10 @@
+.git/
+.github/
+.dvc/
+data/
+*.ipynb
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env

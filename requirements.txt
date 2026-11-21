@@ -1,0 +1,7 @@
+fastapi==0.165.0
+uvicorn==0.54.0
+mlflow==3.18.0
+scikit-learn==1.9.1
+skops==0.16.0
+dagshub==0.7.3
+joblib==1.6.0
